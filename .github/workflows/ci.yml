@@ -10,9 +10,6 @@ on:
       - develop
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   update-readme:
     name: Actualizar README
@@ -21,24 +18,19 @@ jobs:
     steps:
       - name: Obtener código
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Añadir feature al README
         shell: bash
         run: |
           BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
           echo "Añadida feature: ${BRANCH_NAME}" >> README.md
+          grep -F "Añadida feature: ${BRANCH_NAME}" README.md
 
-      - name: Guardar cambio en develop
-        if: github.event_name != 'pull_request'
+      - name: Informar de la protección de rama
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git diff --cached --quiet || git commit -m "docs: registrar feature [skip ci]"
-          git push
+          echo "El README se ha actualizado dentro del job."
+          echo "La persistencia en develop se realizará mediante Pull Request, porque la rama está protegida."
 
   validate-dev:
     name: Validar token de desarrollo
