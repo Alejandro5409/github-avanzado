@@ -1,0 +1,60 @@
+name: CI - Develop
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    name: Actualizar README
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Añadir feature al README
+        shell: bash
+        run: |
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+          echo "Añadida feature: ${BRANCH_NAME}" >> README.md
+
+      - name: Guardar cambio en develop
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet || git commit -m "docs: registrar feature [skip ci]"
+          git push
+
+  validate-dev:
+    name: Validar token de desarrollo
+    runs-on: [self-hosted, Windows, X64]
+    needs: update-readme
+
+    steps:
+      - name: Comparar DEV_TOKEN con LOCAL_DEV_TOKEN
+        shell: powershell
+        env:
+          DEV_TOKEN: ${{ secrets.DEV_TOKEN }}
+        run: |
+          if ($env:DEV_TOKEN -eq $env:LOCAL_DEV_TOKEN) {
+            Write-Host "DEV_TOKEN y LOCAL_DEV_TOKEN coinciden."
+          }
+          else {
+            Write-Error "DEV_TOKEN y LOCAL_DEV_TOKEN no coinciden."
+            exit 1
+          }
