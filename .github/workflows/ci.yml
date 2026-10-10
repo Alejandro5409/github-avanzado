@@ -1,0 +1,52 @@
+name: CI - Develop
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    name: Actualizar README
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Añadir feature al README
+        shell: bash
+        run: |
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+          echo "Añadida feature: ${BRANCH_NAME}" >> README.md
+          grep -F "Añadida feature: ${BRANCH_NAME}" README.md
+
+      - name: Informar de la protección de rama
+        shell: bash
+        run: |
+          echo "El README se ha actualizado dentro del job."
+          echo "La persistencia en develop se realizará mediante Pull Request, porque la rama está protegida."
+
+  validate-dev:
+    name: Validar token de desarrollo
+    runs-on: [self-hosted, Windows, X64]
+    needs: update-readme
+
+    steps:
+      - name: Comparar DEV_TOKEN con LOCAL_DEV_TOKEN
+        shell: powershell
+        env:
+          DEV_TOKEN: ${{ secrets.DEV_TOKEN }}
+        run: |
+          if ($env:DEV_TOKEN -eq $env:LOCAL_DEV_TOKEN) {
+            Write-Host "DEV_TOKEN y LOCAL_DEV_TOKEN coinciden."
+          }
+          else {
+            Write-Error "DEV_TOKEN y LOCAL_DEV_TOKEN no coinciden."
+            exit 1
+          }
